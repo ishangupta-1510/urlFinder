@@ -16,7 +16,7 @@ class RedisService {
         });
     }
 
-    public async set(key: string, value: string): Promise<void> {
+    public async setUrl(key: string, value: string): Promise<void> {
         try {
             await this.client.set(key, value);
         } catch (error) {
@@ -24,17 +24,16 @@ class RedisService {
         }
     }
 
-    public async get(key: string): Promise<string | null> {
+    public async getUrl(key: string): Promise<string | null> {
         try {
-            const value = await this.client.get(key);
-            return value;
+            return await this.client.get(key);
         } catch (error) {
             console.error("Error getting value from Redis:", error);
             return null;
         }
     }
 
-    public async del(key: string): Promise<void> {
+    public async delUrl(key: string): Promise<void> {
         try {
             await this.client.del(key);
         } catch (error) {
@@ -42,24 +41,30 @@ class RedisService {
         }
     }
 
-    public async exists(key: string): Promise<boolean> {
+    public async existUrl(key: string): Promise<boolean> {
         try {
-            const exists = await this.client.exists(key);
-            return exists === 1;
+            return (await this.client.exists(key)) === 1;
         } catch (error) {
             console.error("Error checking existence in Redis:", error);
             return false;
         }
     }
 
-    public async setQueryNumber(key: string): Promise<number> {
+    public async setProxy(key: string, value: number): Promise<void> {
         try {
-            const value = await this.client.incr(key);
-            return value;
+            await this.client.set(key, value.toString());
+        } catch (error) {
+            console.error("Error setting proxy value in Redis:", error);
         }
-        catch (error) {
-            console.error("Error incrementing query number in Redis:", error);
-            return 0;
+    }
+
+    public async getProxy(key: string): Promise<number | null> {
+        try {
+            const value = await this.client.get(key);
+            return value ? parseInt(value) : null;
+        } catch (error) {
+            console.error("Error getting proxy value from Redis:", error);
+            return null;
         }
     }
 }
