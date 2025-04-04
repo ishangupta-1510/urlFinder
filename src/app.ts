@@ -1,12 +1,12 @@
 import express from 'express';
+import router from './routes';
 
 const app = express();
 const port = 3000;
 
 // Define a route for the root URL
-app.get('/', (req, res) => {
-  res.send('Hello, Express!');
-});
+app.use(router);
+app.use(express.json())
 
 // Start the server
 app.listen(port, () => {
