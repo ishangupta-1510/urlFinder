@@ -1,5 +1,6 @@
 import axios from 'axios';
-import puppeteer from 'puppeteer';
+// import puppeteer from 'puppeteer';
+import { chromium } from 'playwright';
 
 class UrlService {
     public async testUrl(url: string): Promise<boolean> {
@@ -10,6 +11,7 @@ class UrlService {
                     return status >= 200 && status < 400; // Accept only 2xx and 3xx status codes
                 }
             })
+            console.log(`Testing URL: ${url}, Status: ${response.status}`);
             return response.status >= 200 && response.status < 400;
         }
         catch (error) {
@@ -18,10 +20,10 @@ class UrlService {
         }
     }
 
-    public async findPatterns(url: string, patterns: string[]): Promise<boolean> {
+    public findPatterns(url: string, patterns: string[]): boolean {
         //if the url contain any of the patterns return true
         for (const pattern of patterns) {
-            if (url.includes(pattern)) {
+            if (url.toLocaleLowerCase().includes(pattern)) {
                 return true;
             }
         }
@@ -29,37 +31,44 @@ class UrlService {
     }
 
     public async urlExtractor(url: string): Promise<string[]> {
-        const domain = new URL(url).hostname;
-        const browser = await puppeteer.launch({
+        const browser = await chromium.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'].filter(Boolean),
-        })
+            args: ['--no-sandbox', '--disable-setuid-sandbox'], 
+        });
+        const context = await browser.newContext({
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+        });
+        const page = await context.newPage();
+
         try {
-            const page = await browser.newPage();
-            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3');
+            console.log(`Launching browser for ${url}`);
+            console.log(`Extracting URLs from ${url}`);
             page.setDefaultNavigationTimeout(10000);
-            await page.goto(url, { waitUntil: 'networkidle2' });
+            await page.goto(url, { waitUntil: 'networkidle' }); 
             const links = await page.evaluate(() => {
-                return Array.from(document.querySelectorAll('a')).map((link) => link.href);
-            })
-            return links
-        }
-        catch (error) {
+                return Array.from(document.querySelectorAll('a')).map(link => link.href);
+            });
+            return links;
+        } catch (error) {
             console.error(`Error extracting URLs from ${url}:`, error);
             return [];
-        }
-        finally {
+        } finally {
             await browser.close();
         }
     }
 
-    public async getProductUrls(url: string): Promise<string[]> {
+    public async getProductUrls(url: string, hardCheck: boolean = false): Promise<string[]> {
         const links = await this.urlExtractor(url);
-        const patterns = ['product', 'item', 'detail', 'shop', 'category', 'p', 'pd'];
+        // console.log(links, 'links');
+        const patterns = ['/products/', '/items/', '/shop/', 'categories', '/p/', '/pd/', '/collections/', '/c/'];
         const filteredLinks = links.filter(link => this.findPatterns(link, patterns));
+        // console.log(filteredLinks, 'filteredLinks');
         const productUrls: string[] = [];
         for (const link of filteredLinks) {
-            if (await this.testUrl(link)) {
+            if (hardCheck && await this.testUrl(link)) {
+                productUrls.push(link);
+            }
+            else if(!hardCheck) {
                 productUrls.push(link);
             }
         }

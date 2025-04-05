@@ -6,7 +6,7 @@ const urlSchema = new mongoose.Schema({
         required: true
     },
     productUrl: {
-        type: String,
+        type: Array,
         required: true
     }
 })
@@ -15,5 +15,5 @@ const Url = mongoose.model('Url', urlSchema);
 export default Url;
 export type UrlType = {
     originalUrl: string;
-    productUrl: string;
+    productUrl: string[];
 }

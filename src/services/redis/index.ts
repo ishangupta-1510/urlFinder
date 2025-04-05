@@ -1,14 +1,15 @@
 import Redis from "ioredis";
 import Url from "../../models/url";
+import appConstants from "../appConstants";
 
 class RedisService {
     private client: Redis;
 
     constructor() {
         this.client = new Redis({
-            host: process.env.REDIS_HOST,
-            port: Number(process.env.REDIS_PORT),
-            password: process.env.REDIS_PASSWORD,
+            host: appConstants.REDIS_HOST,
+            port: appConstants.REDIS_PORT,
+            password: appConstants.REDIS_PASSWORD,
             maxRetriesPerRequest: 3
         });
 
@@ -19,7 +20,7 @@ class RedisService {
 
     public async setUrl(key: string, value: string): Promise<void> {
         try {
-            await this.client.set(key, value);
+            await this.client.set(key, JSON.stringify(value));
         } catch (error) {
             console.error("Error setting value in Redis:", error);
         }
@@ -69,13 +70,13 @@ class RedisService {
         }
     }
 
-    public async getUrlWithMongoFallback(key: string): Promise<string | null> {
+    public async getUrlWithMongoFallback(key: string): Promise<string[] | null> {
         try {
             const cachedValue = await this.client.get(key);
 
             if (cachedValue) {
                 console.log("Found in Redis!");
-                return cachedValue;
+                return JSON.parse(cachedValue);
             }
 
             console.log("Not found in Redis, checking MongoDB...");
@@ -85,17 +86,42 @@ class RedisService {
             if (mongoDoc && mongoDoc.productUrl) {
                 const valueFromMongo = mongoDoc.productUrl;
 
-                await this.client.set(key, valueFromMongo);
+                await this.client.set(key, JSON.stringify(valueFromMongo));
 
                 console.log("Cached value into Redis!");
 
                 return valueFromMongo;
             }
+            console.log("Not found in MongoDB!");
 
-            return null;
+            return [];
         } catch (error) {
             console.error("Error in getUrlWithMongoFallback:", error);
             return null;
+        }
+    }
+
+    public async setUrlWithMongoFallback(key: string, value: string[]): Promise<void> {
+        try {
+            await this.client.set(key, JSON.stringify(value));
+            console.log("Cached value into Redis!");
+
+            const mongoDoc = await Url.findOne({ originalUrl: key });
+
+            if (mongoDoc) {
+                mongoDoc.productUrl = value;
+                await mongoDoc.save();
+                console.log("Cached value into MongoDB!");
+            } else {
+                const newUrl = new Url({
+                    originalUrl: key,
+                    productUrl: value
+                });
+                await newUrl.save();
+                console.log("Created new URL in MongoDB!");
+            }
+        } catch (error) {
+            console.error("Error in setUrlWithMongoFallback:", error);
         }
     }
 }

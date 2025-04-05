@@ -1,5 +1,6 @@
 import express from 'express';
 import router from './routes';
+import connectDB from './shared/mongoDb';
 
 const app = express();
 const port = 3000;
@@ -9,6 +10,11 @@ app.use(express.json())
 app.use(router);
 
 // Start the server
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+const startServer = async () => {
+  await connectDB();
+  app.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
+  });
+};
+
+startServer();

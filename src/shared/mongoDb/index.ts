@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import appConstants from "../services/appConstants";
+import appConstants from "../../services/appConstants";
 
-const MONGO_URI = appConstants.MongoDBUrl;
+const MONGO_URI = appConstants.MONGO_DB_URL;
 
 const connectDB = async () => {
   try {
