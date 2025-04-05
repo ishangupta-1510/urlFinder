@@ -1,7 +1,11 @@
 import axios from 'axios';
 // import puppeteer from 'puppeteer';
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import RedisService from '../redis';
+import cheerio from 'cheerio';
+
+chromium.use(StealthPlugin());
 
 class UrlService {
     public async testUrl(url: string): Promise<boolean> {
@@ -32,41 +36,99 @@ class UrlService {
     }
 
     public async urlExtractor(url: string): Promise<string[]> {
-        const proxies = [
-            'http://51.159.115.233:3128',
-            'http://103.216.82.43:6666',
-            'http://138.68.60.8:8080',
-            'http://159.89.132.167:8989',
-            'http://64.225.8.178:9988',
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
         ];
 
-        function getRandomProxy() {
-            const randomIndex = Math.floor(Math.random() * proxies.length);
-            return proxies[randomIndex];
-          }
+        const locales = ['en-US', 'en-GB', 'fr-FR', 'de-DE'];
+        const timezones = ['America/New_York', 'Europe/Berlin', 'Asia/Tokyo', 'Australia/Sydney'];
 
+        const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
+        const randomLocale = locales[Math.floor(Math.random() * locales.length)];
+        const randomTimezone = timezones[Math.floor(Math.random() * timezones.length)];
 
+        // Initialize Playwright browser
         const browser = await chromium.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', `--proxy-server=${getRandomProxy()}`],
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-http2',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-features=IsolateOrigins,site-per-process',
+                '--disable-web-security',
+            ],
         });
+
         const context = await browser.newContext({
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+            userAgent: randomUserAgent,
+            locale: randomLocale,
+            timezoneId: randomTimezone,
+            ignoreHTTPSErrors: true,
+            viewport: {
+                width: Math.floor(Math.random() * (1920 - 1024) + 1024),
+                height: Math.floor(Math.random() * (1080 - 768) + 768),
+            },
         });
+
         const page = await context.newPage();
 
         try {
-            console.log(`Launching browser for ${url}`);
-            console.log(`Extracting URLs from ${url}`);
-            page.setDefaultNavigationTimeout(10000);
-            await page.goto(url, { waitUntil: 'networkidle' });
-            const links = await page.evaluate(() => {
-                return Array.from(document.querySelectorAll('a')).map(link => link.href);
-            });
+            console.log(`Extracting URLs from ${url} using Playwright`);
+            page.setDefaultNavigationTimeout(30000);
+            await page.goto(url, { waitUntil: 'domcontentloaded' });
+            await page.content();
+
+            const links = await page.evaluate(() =>
+                Array.from(document.querySelectorAll('a')).map((link) => link.href)
+            );
+
             return links;
         } catch (error) {
-            console.error(`Error extracting URLs from ${url}:`, error);
-            return [];
+            console.error(`Error extracting URLs from ${url} using Playwright:`, error);
+
+            // Fallback to Cheerio
+            console.log(`Falling back to Cheerio for URL extraction from ${url}`);
+            try {
+                console.log('before axios');
+                let response;
+                try {
+                    response = await axios.get(url, {
+                        headers: {
+                            'User-Agent': randomUserAgent,
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache',
+                            'Upgrade-Insecure-Requests': '1',
+                            'Referer': 'https://google.com',
+                        },
+                        timeout: 8000,
+                    });
+                } catch (error) {
+                    console.error(`Error fetching ${url} with axios:`, error);
+                    throw new Error(`Failed to fetch ${url} with axios`);
+                }
+
+                if (!response || !response.data) {
+                    throw new Error('Failed to fetch URL');
+                }
+
+                const $ = cheerio.load(response.data);
+                const links = $('a')
+                    .map((_, element) => $(element).attr('href'))
+                    .get();
+
+                return links;
+            } catch (cheerioError) {
+                console.error(`Error extracting URLs from ${url} using Cheerio:`, cheerioError);
+                throw new Error(
+                    `Failed to extract URLs from ${url} using both Playwright and Cheerio`
+                );
+            }
         } finally {
             await browser.close();
         }
@@ -74,8 +136,7 @@ class UrlService {
 
     public async getProductUrls(url: string, hardCheck: boolean = false): Promise<string[]> {
         const links = await this.urlExtractor(url);
-        // console.log(links, 'links');
-        const patterns = ['/products/', '/items/', '/shop/', 'categories', '/p/', '/pd/', '/collections/', '/c/'];
+        const patterns = ['/products/', '/items/', '/shop/', 'categories', '/p/', '/pd/', '/collections/', '/c/', 'men', 'women', 'mens', 'womens', 'kids'];
         const filteredLinks = links.filter(link => this.findPatterns(link, patterns));
         // console.log(filteredLinks, 'filteredLinks');
         const productUrls: string[] = [];

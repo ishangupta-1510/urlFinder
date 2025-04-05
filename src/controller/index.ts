@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { z } from 'zod';
-import RedisService from '../services/redis'
+import RedisService from '../services/redis';
 import UrlService from '../services/urlService';
 
 export const crawler = async (req: Request, res: Response) => {
@@ -14,29 +14,32 @@ export const crawler = async (req: Request, res: Response) => {
 
     const urls = validation.urls;
 
+    const domainUrlMap: Record<string, string[]> = {};
 
-    const productUrls = (await Promise.all(urls.map(async (url) => {
-        const productUrl = await RedisService.getUrlWithMongoFallback(url);
-        if (productUrl) {
-            if(validation.hardCheck ){
-                Promise.all(productUrl.map(async (productUrl) => {
+    await Promise.all(urls.map(async (url) => {
+        const productUrls = await RedisService.getUrlWithMongoFallback(url);
+        if (productUrls) {
+            if (validation.hardCheck) {
+                await Promise.all(productUrls.map(async (productUrl) => {
                     const isValid = await UrlService.testUrl(productUrl);
                     if (!isValid) {
                         console.log(`Invalid URL: ${productUrl}`);
                         throw new Error(`Invalid URL: ${productUrl}`);
                     }
                 }));
-                return productUrl;
             }
-            else {
-                return productUrl;
-            }
+            const domain = new URL(url).hostname;
+            domainUrlMap[domain] = domainUrlMap[domain] || [];
+            domainUrlMap[domain].push(...productUrls);
         } else {
+            console.log(`URL not found in Redis or MongoDB: ${url}`);
             const newUrls = await UrlService.getProductUrls(url, validation.hardCheck);
             await RedisService.setUrlWithMongoFallback(url, newUrls);
-            return newUrls;
+            const domain = new URL(url).hostname;
+            domainUrlMap[domain] = domainUrlMap[domain] || [];
+            domainUrlMap[domain].push(...newUrls);
         }
-    }))).flat();
+    }));
 
-    res.status(StatusCodes.ACCEPTED).send(productUrls);
+    res.status(StatusCodes.ACCEPTED).send(domainUrlMap);
 };

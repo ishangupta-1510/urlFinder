@@ -94,7 +94,7 @@ class RedisService {
             }
             console.log("Not found in MongoDB!");
 
-            return [];
+            return null;
         } catch (error) {
             console.error("Error in getUrlWithMongoFallback:", error);
             return null;
