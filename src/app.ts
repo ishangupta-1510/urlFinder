@@ -5,8 +5,8 @@ const app = express();
 const port = 3000;
 
 // Define a route for the root URL
-app.use(router);
 app.use(express.json())
+app.use(router);
 
 // Start the server
 app.listen(port, () => {

@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import Url from "../../models/url";
 
 class RedisService {
     private client: Redis;
@@ -64,6 +65,36 @@ class RedisService {
             return value ? parseInt(value) : null;
         } catch (error) {
             console.error("Error getting proxy value from Redis:", error);
+            return null;
+        }
+    }
+
+    public async getUrlWithMongoFallback(key: string): Promise<string | null> {
+        try {
+            const cachedValue = await this.client.get(key);
+
+            if (cachedValue) {
+                console.log("Found in Redis!");
+                return cachedValue;
+            }
+
+            console.log("Not found in Redis, checking MongoDB...");
+
+            const mongoDoc = await Url.findOne({ originalUrl: key }).lean();
+
+            if (mongoDoc && mongoDoc.productUrl) {
+                const valueFromMongo = mongoDoc.productUrl;
+
+                await this.client.set(key, valueFromMongo);
+
+                console.log("Cached value into Redis!");
+
+                return valueFromMongo;
+            }
+
+            return null;
+        } catch (error) {
+            console.error("Error in getUrlWithMongoFallback:", error);
             return null;
         }
     }
