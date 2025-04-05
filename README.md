@@ -36,6 +36,25 @@ This tool is particularly useful for e-commerce platforms or aggregators that ne
 
 ---
 
+### Use of Multiple User Agents, Locales, and Timezones
+
+To enhance the reliability and accuracy of web scraping, the project employs multiple user agents, locales, and timezones. This approach helps mimic real-world browsing behavior and reduces the chances of being blocked by websites.
+
+1. **User Agents**  
+   A pool of user agents is used to simulate requests from different devices and browsers, such as:
+   - Desktop browsers (e.g., Chrome, Safari, Firefox)
+   - Mobile browsers (e.g., iPhone Safari)
+
+   A random user agent is selected for each request to make the scraper appear as a legitimate user.
+
+2. **Locales**  
+   Different locales (e.g., `en-US`, `en-GB`, `fr-FR`) are used to simulate browsing from various regions. This ensures compatibility with websites that serve localized content.
+
+3. **Timezones**  
+   Random timezones (e.g., `America/New_York`, `Europe/Berlin`, `Asia/Tokyo`) are applied to further diversify the requests and mimic users from different parts of the world.
+
+This combination of user agents, locales, and timezones is implemented in the [`urlExtractor`](src/services/urlService/index.ts) method of the `UrlService` class. It ensures that the scraper behaves more like a real user, improving its effectiveness and reducing the likelihood of detection or blocking.
+
 ## Architecture
 
 The project follows a modular architecture pattern:
@@ -127,7 +146,7 @@ Start the server on `http://localhost:3000`. You can interact with the API using
 ```json
 {
   "urls": ["https://example.com", "https://another-example.com"],
-  "hardCheck": true
+  "hardCheck": true //optional field by default is false
 }
 ```
 
