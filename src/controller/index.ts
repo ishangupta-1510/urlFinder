@@ -39,7 +39,6 @@ export const crawler = async (req: Request, res: Response) => {
         } else {
             console.log(`URL not found in Redis or MongoDB: ${url}`);
             const newUrls = await UrlService.getProductUrls(url, validation.hardCheck);
-            await RedisService.setUrlWithMongoFallback(url, newUrls);
             const domain = new URL(url).hostname;
             domainUrlMap[domain] = domainUrlMap[domain] || [];
             domainUrlMap[domain].push(...newUrls);

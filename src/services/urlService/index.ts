@@ -111,6 +111,7 @@ class UrlService {
             const links = await page.evaluate(() =>
                 Array.from(document.querySelectorAll('a')).map((link) => link.href)
             );
+            console.log(links, 'links');
 
             return links;
         } catch (error) {
@@ -172,6 +173,9 @@ class UrlService {
             .filter((link): link is string => link !== null);
 
         const filteredLinks = absoluteLinks.filter(link => this.findPatterns(link, patterns));
+        if(filteredLinks.length !== 0) {
+            await RedisService.setUrlWithMongoFallback(url, filteredLinks);
+        }
 
         if (!hardCheck) {
             return filteredLinks;
