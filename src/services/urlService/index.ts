@@ -8,19 +8,45 @@ import cheerio from 'cheerio';
 chromium.use(StealthPlugin());
 
 class UrlService {
+
+    private normalizeUrl(base: string, link: string): string | null {
+        try {
+            const url = new URL(link, base); // base will fix relative links
+            if (url.protocol.startsWith('http')) {
+                return url.href;
+            }
+            return null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+
     public async testUrl(url: string): Promise<boolean> {
         try {
-            const response = await axios.head(url, {
-                timeout: 5000, // Set a timeout of 5 seconds
-                validateStatus: (status) => {
-                    return status >= 200 && status < 400; // Accept only 2xx and 3xx status codes
-                }
-            })
-            console.log(`Testing URL: ${url}, Status: ${response.status}`);
+            const userAgents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+            ];
+            const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
+            const response = await axios.get(url, {
+                headers: {
+                    'User-Agent': randomUserAgent,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Referer': 'https://google.com',
+                },
+                timeout: 15000,
+            });
             return response.status >= 200 && response.status < 400;
         }
         catch (error) {
-            console.error(`Error testing URL ${url}:`, error);
+            // console.error(`Error testing URL ${url}:`, error);
             return false;
         }
     }
@@ -93,7 +119,6 @@ class UrlService {
             // Fallback to Cheerio
             console.log(`Falling back to Cheerio for URL extraction from ${url}`);
             try {
-                console.log('before axios');
                 let response;
                 try {
                     response = await axios.get(url, {
@@ -136,20 +161,45 @@ class UrlService {
 
     public async getProductUrls(url: string, hardCheck: boolean = false): Promise<string[]> {
         const links = await this.urlExtractor(url);
-        const patterns = ['/products/', '/items/', '/shop/', 'categories', '/p/', '/pd/', '/collections/', '/c/', 'men', 'women', 'mens', 'womens', 'kids'];
-        const filteredLinks = links.filter(link => this.findPatterns(link, patterns));
-        // console.log(filteredLinks, 'filteredLinks');
-        const productUrls: string[] = [];
-        for (const link of filteredLinks) {
-            if (hardCheck && await this.testUrl(link)) {
-                productUrls.push(link);
-            }
-            else if (!hardCheck) {
-                productUrls.push(link);
-            }
+
+        const patterns = [
+            '/products/', '/items/', '/shop/', '/categories', '/p/', '/pd/',
+            '/collections/', '/c/', 'men', 'women', 'mens', 'womens', 'kids'
+        ];
+
+        const absoluteLinks = links
+            .map(link => this.normalizeUrl(url, link))
+            .filter((link): link is string => link !== null);
+
+        const filteredLinks = absoluteLinks.filter(link => this.findPatterns(link, patterns));
+
+        if (!hardCheck) {
+            return filteredLinks;
         }
-        return productUrls;
+
+        const productUrls = await Promise.allSettled(
+            filteredLinks.map(async (link) => {
+                try {
+                    return (await this.testUrl(link)) ? link : null;
+                } catch (error) {
+                    return null;
+                }
+            }
+            )
+        );
+        console.log(`Product URLs: ${productUrls}`);
+
+        const successes = productUrls
+            .filter(result => result.status === 'fulfilled')
+            .map(result => result.value);
+
+        const failures = productUrls
+            .filter(result => result.status === 'rejected')
+            .map(result => result.reason);
+
+        return successes.filter((link): link is string => link !== null);
     }
+
 }
 
 export default new UrlService();

@@ -17,6 +17,8 @@
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
     "http-status-codes": "^2.3.0",
     "ioredis": "^5.6.0",
     "mongoose": "^8.13.2",

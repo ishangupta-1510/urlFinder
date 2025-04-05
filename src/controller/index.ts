@@ -18,13 +18,12 @@ export const crawler = async (req: Request, res: Response) => {
 
     await Promise.all(urls.map(async (url) => {
         const productUrls = await RedisService.getUrlWithMongoFallback(url);
-        if (productUrls) {
+        if (productUrls && productUrls.length > 0) {
             if (validation.hardCheck) {
-                await Promise.all(productUrls.map(async (productUrl) => {
+                await Promise.allSettled(productUrls.map(async (productUrl) => {
                     const isValid = await UrlService.testUrl(productUrl);
                     if (!isValid) {
                         console.log(`Invalid URL: ${productUrl}`);
-                        throw new Error(`Invalid URL: ${productUrl}`);
                     }
                 }));
             }
