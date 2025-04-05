@@ -17,7 +17,13 @@ export const crawler = async (req: Request, res: Response) => {
     const domainUrlMap: Record<string, string[]> = {};
 
     await Promise.all(urls.map(async (url) => {
-        const productUrls = await RedisService.getUrlWithMongoFallback(url);
+        let productUrls: string[] | null = [];
+        try {
+            productUrls = await RedisService.getUrlWithMongoFallback(url);
+        }
+        catch (error) {
+            console.log(`Error fetching URL from Redis or MongoDB: ${error}`);
+        }
         if (productUrls && productUrls.length > 0) {
             if (validation.hardCheck) {
                 await Promise.allSettled(productUrls.map(async (productUrl) => {
