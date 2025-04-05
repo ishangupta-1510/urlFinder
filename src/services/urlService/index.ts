@@ -1,6 +1,7 @@
 import axios from 'axios';
 // import puppeteer from 'puppeteer';
 import { chromium } from 'playwright';
+import RedisService from '../redis';
 
 class UrlService {
     public async testUrl(url: string): Promise<boolean> {
@@ -31,9 +32,23 @@ class UrlService {
     }
 
     public async urlExtractor(url: string): Promise<string[]> {
+        const proxies = [
+            'http://51.159.115.233:3128',
+            'http://103.216.82.43:6666',
+            'http://138.68.60.8:8080',
+            'http://159.89.132.167:8989',
+            'http://64.225.8.178:9988',
+        ];
+
+        function getRandomProxy() {
+            const randomIndex = Math.floor(Math.random() * proxies.length);
+            return proxies[randomIndex];
+          }
+
+
         const browser = await chromium.launch({
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'], 
+            args: ['--no-sandbox', '--disable-setuid-sandbox', `--proxy-server=${getRandomProxy()}`],
         });
         const context = await browser.newContext({
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
@@ -44,7 +59,7 @@ class UrlService {
             console.log(`Launching browser for ${url}`);
             console.log(`Extracting URLs from ${url}`);
             page.setDefaultNavigationTimeout(10000);
-            await page.goto(url, { waitUntil: 'networkidle' }); 
+            await page.goto(url, { waitUntil: 'networkidle' });
             const links = await page.evaluate(() => {
                 return Array.from(document.querySelectorAll('a')).map(link => link.href);
             });
@@ -68,7 +83,7 @@ class UrlService {
             if (hardCheck && await this.testUrl(link)) {
                 productUrls.push(link);
             }
-            else if(!hardCheck) {
+            else if (!hardCheck) {
                 productUrls.push(link);
             }
         }

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { z } from 'zod';
 import RedisService from '../services/redis'
-import UrlService from '../services/urlTester';
+import UrlService from '../services/urlService';
 
 export const crawler = async (req: Request, res: Response) => {
     const crawlerSchema = z.object({
