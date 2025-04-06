@@ -165,7 +165,7 @@ class UrlService {
 
         const patterns = [
             '/products/', '/items/', '/shop/', '/categories', '/p/', '/pd/',
-            '/collections/', '/c/', 'men', 'women', 'mens', 'womens', 'kids'
+            '/collections/', '/c/', '/men/', '/women/', '/mens/', '/womens/', '/kids/'
         ];
 
         const absoluteLinks = links
