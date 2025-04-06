@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: urlfinder
+    env: node
+    buildCommand: npm install
+    startCommand: npm run start
+    prebuildCommand: npx playwright install --with-deps

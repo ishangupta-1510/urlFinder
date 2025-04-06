@@ -120,7 +120,12 @@ Ensure you have the following installed:
     npm install
     ```
 
-3. Set up environment variables:  
+3. Install dependencies:
+    ```bash
+    npx playwright install --with-deps
+    ```
+
+4. Set up environment variables:  
     Create a `.env` file in the root directory with the following:
     ```text
     MONGO_DB_URL=<your-mongodb-url>
@@ -129,7 +134,7 @@ Ensure you have the following installed:
     REDIS_PASSWORD=<your-redis-password>
     ```
 
-4. Start the application:
+5. Start the application:
     ```bash
     npm run start
     ```
