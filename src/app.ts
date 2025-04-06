@@ -3,9 +3,10 @@ import router from './routes';
 import connectDB from './shared/mongoDb';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import appConstants from './services/appConstants';
 
 const app = express();
-const port = 3000;
+const port = appConstants.PORT || 3000;
 
 // Security headers with Helmet
 app.use(helmet());
@@ -48,7 +49,7 @@ app.use(router);
 // Start the server
 const startServer = async () => {
   await connectDB();
-  app.listen(port, () => {
+  app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${port}`);
   });
 };

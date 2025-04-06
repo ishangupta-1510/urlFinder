@@ -8,6 +8,7 @@ const appConstantsSchema = z.object({
     REDIS_HOST: z.string(),
     REDIS_PORT: z.string().transform((val) => parseInt(val, 10)),
     REDIS_PASSWORD: z.string(),
+    PORT: z.string().transform((val) => parseInt(val, 10)).default('3000'),
 });
 
 const appConstants = appConstantsSchema.parse({
@@ -15,6 +16,7 @@ const appConstants = appConstantsSchema.parse({
     REDIS_HOST: process.env.REDIS_HOST,
     REDIS_PORT: process.env.REDIS_PORT,
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+    PORT: process.env.PORT
 });
 
 export default appConstants;
